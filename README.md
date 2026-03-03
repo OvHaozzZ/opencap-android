@@ -1,5 +1,7 @@
 # OpenCap Android (Replica of `opencap-iphone`)
 
+Chinese version: [README.zh-CN.md](README.zh-CN.md)
+
 This project recreates the same app behavior as the iPhone client in this repository:
 
 - QR scan to bind a recording session.
