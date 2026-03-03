@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">OpenCap</string>
+    <string name="instruction_scan">Scan QR code displayed&#10;on web app&#10;(app.opencap.ai)</string>
+    <string name="instruction_scan_full">Scan QR code displayed on web app (app.opencap.ai)</string>
+    <string name="instruction_mount">Mount Android device to tripod and return to web app</string>
+    <string name="no_internet">Device no longer connected to server, verify your internet connection</string>
+    <string name="portrait_lock_warning">Warning: turn off Portrait Orientation Lock on your device to record a video with the phone rotated.</string>
+    <string name="uploading_video">Uploading video %1$d%%</string>
+    <string name="action_options">Please select an option</string>
+    <string name="start_new_session">Start a new session</string>
+    <string name="dismiss">Dismiss</string>
+    <string name="camera_permission_denied">Camera permission is required.</string>
+    <string name="pose_uploaded">Pose uploaded: %1$s (%2$d/%3$d)</string>
+    <string name="pose_exported_local">Pose JSON exported: %1$s</string>
+</resources>

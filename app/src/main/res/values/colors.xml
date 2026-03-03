@@ -1,0 +1,8 @@
+<resources>
+    <color name="app_blue">#7899CF</color>
+    <color name="instruction_bg">#88000000</color>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+    <color name="error_red">#B00020</color>
+    <color name="warning_orange">#E18000</color>
+</resources>
