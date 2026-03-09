@@ -1,5 +1,6 @@
 package ai.opencap.android.data
 
+import ai.opencap.android.BuildConfig
 import ai.opencap.android.model.PatchVideoRequest
 import ai.opencap.android.model.SessionStatusResponse
 import ai.opencap.android.model.VideoCredentials
@@ -9,6 +10,7 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
+import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 class SessionRepository {
@@ -16,7 +18,11 @@ class SessionRepository {
 
     init {
         val logger = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BASIC
+            level = if (BuildConfig.DEBUG) {
+                HttpLoggingInterceptor.Level.BASIC
+            } else {
+                HttpLoggingInterceptor.Level.NONE
+            }
         }
         val client = OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
@@ -45,6 +51,17 @@ class SessionRepository {
     }
 
     suspend fun patchVideo(patchUrl: String, payload: PatchVideoRequest) {
-        api.patchVideo(patchUrl, payload)
+        val response = api.patchVideo(patchUrl, payload)
+        if (!response.isSuccessful) {
+            val body = response.errorBody()?.string()?.take(512)
+            val detail = if (body.isNullOrBlank()) {
+                ""
+            } else {
+                " body=$body"
+            }
+            throw IOException(
+                "Patch video failed: HTTP ${response.code()} ${response.message()}$detail"
+            )
+        }
     }
 }

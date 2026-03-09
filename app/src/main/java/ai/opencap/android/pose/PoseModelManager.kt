@@ -23,6 +23,7 @@ class PoseModelManager(private val context: Context) {
         if (modelFile.exists() && modelFile.length() > 1_000_000) {
             return modelFile
         }
+        val tmpFile = File(modelDir, "${variant.fileName}.download")
 
         val request = Request.Builder()
             .url(variant.downloadUrl)
@@ -34,15 +35,29 @@ class PoseModelManager(private val context: Context) {
                 return null
             }
             val body = response.body ?: return null
-            modelFile.outputStream().use { output ->
+            tmpFile.outputStream().use { output ->
                 body.byteStream().use { input ->
                     input.copyTo(output)
                 }
             }
         }
 
-        if (!modelFile.exists() || modelFile.length() <= 1_000_000) {
+        if (!tmpFile.exists() || tmpFile.length() <= 1_000_000) {
+            tmpFile.delete()
             throw IOException("Downloaded model file is invalid: ${modelFile.absolutePath}")
+        }
+        if (modelFile.exists() && !modelFile.delete()) {
+            tmpFile.delete()
+            throw IOException("Cannot replace existing model file: ${modelFile.absolutePath}")
+        }
+        if (!tmpFile.renameTo(modelFile)) {
+            runCatching {
+                tmpFile.copyTo(modelFile, overwrite = true)
+            }.onFailure {
+                tmpFile.delete()
+                throw IOException("Cannot finalize model file: ${modelFile.absolutePath}", it)
+            }
+            tmpFile.delete()
         }
         return modelFile
     }
