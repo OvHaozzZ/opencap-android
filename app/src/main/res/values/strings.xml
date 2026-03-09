@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">OpenCap</string>
     <string name="instruction_scan">Scan QR code displayed&#10;on web app&#10;(app.opencap.ai)</string>
     <string name="instruction_scan_full">Scan QR code displayed on web app (app.opencap.ai)</string>
@@ -12,4 +12,7 @@
     <string name="camera_permission_denied">Camera permission is required.</string>
     <string name="pose_uploaded">Pose uploaded: %1$s (%2$d/%3$d)</string>
     <string name="pose_exported_local">Pose JSON exported: %1$s</string>
+    <string name="recording_timer_initial">REC 00:00</string>
+    <string name="recording_timer_format">REC %1$02d:%2$02d</string>
+    <string name="recording_indicator_content_description">Recording in progress</string>
 </resources>

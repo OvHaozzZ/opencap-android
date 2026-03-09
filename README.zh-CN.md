@@ -21,7 +21,7 @@
   - 导出 OpenCap-20 时序 JSON
   - 若已配置接口，自动上传该 JSON
 - 覆盖层与交互：扫码框、指引文案、底部控件旋转、网络告警、方向锁告警。
-- 通过 Firebase Crashlytics 记录运行错误。
+- 通过本地 logcat (`Log.e`) 记录运行错误。
 
 ## 与 iPhone 代码对应关系
 
@@ -30,14 +30,13 @@
 - `VideoCredentials.swift` -> `model/VideoCredentials.kt`
 - `RetryRequestInterceptor.swift` -> `util/RetryInterceptor.kt`
 - `InstructionView.swift` + `UXQRMiddleSquareView` -> `ui/QrOverlayView.kt` + `activity_main.xml`
-- `FirebaseErrorLogger.swift` -> `FirebaseErrorLogger.kt`
+- `FirebaseErrorLogger.swift` -> `ErrorLogger.kt`
 
 ## 构建与运行
 
 1. 用 Android Studio 打开 `opencap-android`（JDK 17）。
 2. 执行 Gradle Sync。
-3. 将 `app/google-services.json` 替换为你自己的 Firebase 配置。
-4. 使用真机运行（涉及 CameraX 与 ML Kit 扫码）。
+3. 使用真机运行（涉及 CameraX 与 ML Kit 扫码）。
 
 ## 当前环境限制
 

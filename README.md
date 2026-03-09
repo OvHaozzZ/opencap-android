@@ -19,7 +19,7 @@ This project recreates the same app behavior as the iPhone client in this reposi
   - Export OpenCap-20 keypoint time series as JSON.
   - Upload JSON to your API endpoint when configured.
 - Instruction overlay, QR frame overlay, rotating bottom controls, network warning, portrait-lock warning.
-- Crash logging through Firebase Crashlytics.
+- Runtime error logging to local logcat (`Log.e`).
 
 ## Parity Mapping from iPhone Code
 
@@ -28,14 +28,13 @@ This project recreates the same app behavior as the iPhone client in this reposi
 - `VideoCredentials.swift` -> `model/VideoCredentials.kt`
 - `RetryRequestInterceptor.swift` -> `util/RetryInterceptor.kt`
 - `InstructionView.swift` + `UXQRMiddleSquareView` -> `ui/QrOverlayView.kt` + `activity_main.xml`
-- `FirebaseErrorLogger.swift` -> `FirebaseErrorLogger.kt`
+- `FirebaseErrorLogger.swift` -> `ErrorLogger.kt`
 
 ## Build Notes
 
 1. Open `opencap-android` in Android Studio (JDK 17).
 2. Sync Gradle.
-3. Replace `app/google-services.json` with your real Firebase config.
-4. Run on a physical Android device (CameraX + ML Kit QR scanning needs camera hardware).
+3. Run on a physical Android device (CameraX + ML Kit QR scanning needs camera hardware).
 
 ## Known Environment Limitation in This Workspace
 

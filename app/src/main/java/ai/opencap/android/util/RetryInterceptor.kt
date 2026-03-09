@@ -5,6 +5,10 @@ import okhttp3.Response
 import java.io.IOException
 
 class RetryInterceptor(private val retryCount: Int) : Interceptor {
+    private companion object {
+        const val BASE_RETRY_DELAY_MS = 2000L
+    }
+
     override fun intercept(chain: Interceptor.Chain): Response {
         var lastException: IOException? = null
         repeat(retryCount + 1) { attempt ->
@@ -13,7 +17,8 @@ class RetryInterceptor(private val retryCount: Int) : Interceptor {
             } catch (io: IOException) {
                 lastException = io
                 if (attempt < retryCount) {
-                    Thread.sleep(2000)
+                    val delayMs = BASE_RETRY_DELAY_MS * (1L shl attempt)
+                    Thread.sleep(delayMs)
                 }
             }
         }

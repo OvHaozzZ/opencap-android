@@ -198,8 +198,8 @@ class CameraController(
         val fpsRanges = Camera2CameraInfo.from(cam.cameraInfo).getCameraCharacteristic(
             CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES
         ) ?: return
-        val bestRange = fpsRanges.minByOrNull {
-            kotlin.math.abs(range.upper - frameRate)
+        val bestRange = fpsRanges.minByOrNull { fpsRange ->
+            kotlin.math.abs(fpsRange.upper - frameRate)
         } ?: return
         targetFpsRange = bestRange
         applyCaptureRequestOptions()

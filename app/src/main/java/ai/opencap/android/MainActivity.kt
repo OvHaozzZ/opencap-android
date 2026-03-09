@@ -1,15 +1,19 @@
 package ai.opencap.android
 
+import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.ProgressBar
@@ -74,6 +78,10 @@ class MainActivity : AppCompatActivity(), CameraController.Listener {
     private var uploadingDialog: AlertDialog? = null
     private var uploadingProgressBar: ProgressBar? = null
     private var uploadingLabel: TextView? = null
+    private var recordingTimerJob: Job? = null
+    private var recordingDotAnimator: ObjectAnimator? = null
+    private var recordingStartedAtMs: Long = 0L
+    private var isRecordingStateActive = false
     @Volatile
     private var latestPoseSummary: PoseEstimationSummary? = null
 
@@ -217,38 +225,43 @@ class MainActivity : AppCompatActivity(), CameraController.Listener {
             cameraController.setLensPosition(lens)
         }
 
-        response.status?.let { status ->
-            if (previousStatus != status && status == "recording") {
+        val status = response.status
+        withContext(Dispatchers.Main) {
+            setRecordingStateUi(status == "recording")
+        }
+        status?.let { currentStatus ->
+            if (previousStatus != currentStatus && currentStatus == "recording") {
                 val frameRate = response.framerate ?: 60
                 withContext(Dispatchers.Main) {
                     cameraController.startRecording(frameRate, currentOrientation)
                 }
             }
-            if (previousStatus != status && status == "uploading") {
+            if (previousStatus != currentStatus && currentStatus == "uploading") {
                 withContext(Dispatchers.Main) {
                     cameraController.stopRecording()
                 }
             }
-            if (previousStatus == "uploading" && status == "ready") {
+            if (previousStatus == "uploading" && currentStatus == "ready") {
                 withContext(Dispatchers.Main) {
                     stopUploadingVideo()
                 }
             }
-            previousStatus = status
+            previousStatus = currentStatus
         }
 
         response.newSessionUrl?.let { newSession ->
-            sessionStatusUrl = "$newSession?device_id=${DeviceUtils.deviceId(this)}"
+            sessionStatusUrl = withDeviceIdQuery(newSession)
         }
     }
 
     override fun onQrCodeScanned(value: String) {
         vibrate()
         val url = Uri.parse(value)
-        val host = url.host ?: return
-        apiUrl = "http://$host:8000"
-        sessionStatusUrl = "$value?device_id=${DeviceUtils.deviceId(this)}"
-        presignedUrl = value.replace("/status", "") + "get_presigned_url/"
+        val authority = url.authority ?: return
+        val scheme = url.scheme ?: "https"
+        apiUrl = "$scheme://$authority"
+        sessionStatusUrl = withDeviceIdQuery(value)
+        presignedUrl = buildPresignedUrl(url).orEmpty()
 
         runOnUiThread {
             currentInstructionType = InstructionTextType.MOUNT_DEVICE
@@ -260,6 +273,9 @@ class MainActivity : AppCompatActivity(), CameraController.Listener {
     }
 
     override fun onRecordingFinished(file: java.io.File?, error: String?) {
+        runOnUiThread {
+            setRecordingStateUi(false)
+        }
         if (error != null) {
             runOnUiThread {
                 showError(error)
@@ -343,6 +359,12 @@ class MainActivity : AppCompatActivity(), CameraController.Listener {
         lifecycleScope.launch(Dispatchers.IO) {
             runCatching {
                 sessionRepository.patchVideo(patchUrl, payload)
+            }.onFailure { error ->
+                ErrorLogger.logError(
+                    ErrorDomain.CAPTURE_SESSION,
+                    "Patch uploaded video failed: ${error.localizedMessage}",
+                    error
+                )
             }
         }
     }
@@ -382,7 +404,7 @@ class MainActivity : AppCompatActivity(), CameraController.Listener {
                         ).show()
                     } else {
                         uploadResult.errorMessage?.let {
-                            FirebaseErrorLogger.logError(
+                            ErrorLogger.logError(
                                 ErrorDomain.CAPTURE_SESSION,
                                 "Pose upload/export notice: $it"
                             )
@@ -398,9 +420,10 @@ class MainActivity : AppCompatActivity(), CameraController.Listener {
                     }
                 }
             }.onFailure { error ->
-                FirebaseErrorLogger.logError(
+                ErrorLogger.logError(
                     ErrorDomain.CAPTURE_SESSION,
-                    "Local pose estimation failed: ${error.localizedMessage}"
+                    "Local pose estimation failed: ${error.localizedMessage}",
+                    error
                 )
             }
         }
@@ -497,7 +520,7 @@ class MainActivity : AppCompatActivity(), CameraController.Listener {
         runOnUiThread {
             showError(message)
         }
-        FirebaseErrorLogger.logError(ErrorDomain.CAPTURE_SESSION, message)
+        ErrorLogger.logError(ErrorDomain.CAPTURE_SESSION, message)
     }
 
     private fun vibrate() {
@@ -516,10 +539,102 @@ class MainActivity : AppCompatActivity(), CameraController.Listener {
 
     override fun onDestroy() {
         super.onDestroy()
+        setRecordingStateUi(false)
         pollingJob?.cancel()
         stopUploadingVideo()
         connectivityObserver.stop()
         orientationMonitor.stop()
         cameraController.shutdown()
+    }
+
+    private fun withDeviceIdQuery(rawUrl: String): String {
+        val parsed = Uri.parse(rawUrl)
+        val builder = parsed.buildUpon().clearQuery()
+        parsed.queryParameterNames
+            .filterNot { it == "device_id" }
+            .forEach { name ->
+                parsed.getQueryParameters(name).forEach { value ->
+                    builder.appendQueryParameter(name, value)
+                }
+            }
+        builder.appendQueryParameter("device_id", DeviceUtils.deviceId(this))
+        return builder.build().toString()
+    }
+
+    private fun buildPresignedUrl(statusUri: Uri): String? {
+        val authority = statusUri.authority ?: return null
+        val scheme = statusUri.scheme ?: "https"
+        val segments = statusUri.pathSegments.filter { it.isNotBlank() }
+        val rootSegments = if (segments.lastOrNull()?.equals("status", ignoreCase = true) == true) {
+            segments.dropLast(1)
+        } else {
+            segments
+        }
+        val basePath = if (rootSegments.isEmpty()) {
+            "/"
+        } else {
+            rootSegments.joinToString(separator = "/", prefix = "/", postfix = "/")
+        }
+        return "$scheme://$authority${basePath}get_presigned_url/"
+    }
+
+    private fun setRecordingStateUi(isRecording: Boolean) {
+        if (isRecordingStateActive == isRecording) {
+            return
+        }
+        isRecordingStateActive = isRecording
+        binding.recordingIndicatorLayout.isVisible = isRecording
+        if (isRecording) {
+            recordingStartedAtMs = SystemClock.elapsedRealtime()
+            binding.recordingTimerTextView.text = getString(R.string.recording_timer_initial)
+            startRecordingDotPulse()
+            startRecordingTimer()
+        } else {
+            stopRecordingDotPulse()
+            stopRecordingTimer()
+            binding.recordingTimerTextView.text = getString(R.string.recording_timer_initial)
+        }
+    }
+
+    private fun startRecordingTimer() {
+        recordingTimerJob?.cancel()
+        recordingTimerJob = lifecycleScope.launch {
+            while (isActive && isRecordingStateActive) {
+                val elapsedSeconds =
+                    ((SystemClock.elapsedRealtime() - recordingStartedAtMs) / 1000L).toInt()
+                val minutes = elapsedSeconds / 60
+                val seconds = elapsedSeconds % 60
+                binding.recordingTimerTextView.text =
+                    getString(R.string.recording_timer_format, minutes, seconds)
+                delay(1000L)
+            }
+        }
+    }
+
+    private fun stopRecordingTimer() {
+        recordingTimerJob?.cancel()
+        recordingTimerJob = null
+    }
+
+    private fun startRecordingDotPulse() {
+        recordingDotAnimator?.cancel()
+        binding.recordingDotView.alpha = 1f
+        recordingDotAnimator = ObjectAnimator.ofFloat(
+            binding.recordingDotView,
+            View.ALPHA,
+            1f,
+            0.25f
+        ).apply {
+            duration = 700L
+            repeatMode = ValueAnimator.REVERSE
+            repeatCount = ValueAnimator.INFINITE
+            start()
+        }
+    }
+
+    private fun stopRecordingDotPulse() {
+        recordingDotAnimator?.cancel()
+        recordingDotAnimator = null
+        binding.recordingDotView.alpha = 1f
     }
 }
