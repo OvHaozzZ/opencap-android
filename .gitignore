@@ -6,3 +6,5 @@
 /captures/
 .DS_Store
 /app/build/
+/keystore.properties
+/keystore/

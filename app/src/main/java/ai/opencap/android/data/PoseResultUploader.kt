@@ -4,6 +4,7 @@ import ai.opencap.android.BuildConfig
 import ai.opencap.android.model.PoseUploadPayload
 import ai.opencap.android.pose.PoseEstimationResult
 import com.squareup.moshi.Moshi
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -19,7 +20,9 @@ data class PoseUploadResult(
 )
 
 class PoseResultUploader {
-    private val moshi = Moshi.Builder().build()
+    private val moshi = Moshi.Builder()
+        .add(KotlinJsonAdapterFactory())
+        .build()
     private val payloadAdapter = moshi.adapter(PoseUploadPayload::class.java).indent("  ")
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)

@@ -6,6 +6,7 @@ import ai.opencap.android.model.SessionStatusResponse
 import ai.opencap.android.model.VideoCredentials
 import ai.opencap.android.util.RetryInterceptor
 import com.squareup.moshi.Moshi
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -32,7 +33,9 @@ class SessionRepository {
             .addInterceptor(RetryInterceptor(retryCount = 2))
             .build()
 
-        val moshi = Moshi.Builder().build()
+        val moshi = Moshi.Builder()
+            .add(KotlinJsonAdapterFactory())
+            .build()
         val retrofit = Retrofit.Builder()
             .baseUrl("https://api.opencap.ai/")
             .addConverterFactory(MoshiConverterFactory.create(moshi))
