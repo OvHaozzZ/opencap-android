@@ -21,6 +21,12 @@ This project recreates the same app behavior as the iPhone client in this reposi
 - Instruction overlay, QR frame overlay, rotating bottom controls, network warning, portrait-lock warning.
 - Runtime error logging to local logcat (`Log.e`).
 
+## API Compatibility Notes
+
+- The session polling, presigned upload, and `PATCH video` flow remain aligned with the local `opencap-iphone` client in this workspace.
+- After QR scan, the Android client derives the OpenCap API base as `http://<qr-host>:8000`, matching the local iPhone implementation.
+- `device_id` is emitted as a stable UUID-style identifier for backend compatibility.
+
 ## Parity Mapping from iPhone Code
 
 - `CameraViewController.swift` -> `MainActivity.kt`
@@ -45,6 +51,7 @@ This project recreates the same app behavior as the iPhone client in this reposi
 
 The iPhone client itself does not run pose estimation on-device. It records video and uploads to cloud processing.
 This Android replica keeps that behavior and additionally provides optional local pose inference for modern mobile deployment.
+The local pose JSON export is additive and does not replace the standard OpenCap video upload pipeline.
 
 ### Local Pose Pipeline
 
@@ -76,7 +83,7 @@ Payload contains:
 - session/device identifiers
 - selected model (`mediapipe_pose_full` or `mediapipe_pose_lite`)
 - frame timing metadata
-- OpenCap-20 keypoint time series (`frames[]`)
+- OpenCap-20 keypoint time series (`frames[]`, 20 keypoints per frame, each keypoint stores `x`, `y`, `score`)
 
 ### Multi-Phone Sessions
 

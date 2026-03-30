@@ -257,9 +257,7 @@ class MainActivity : AppCompatActivity(), CameraController.Listener {
     override fun onQrCodeScanned(value: String) {
         vibrate()
         val url = Uri.parse(value)
-        val authority = url.authority ?: return
-        val scheme = url.scheme ?: "https"
-        apiUrl = "$scheme://$authority"
+        apiUrl = buildApiUrl(url) ?: return
         sessionStatusUrl = withDeviceIdQuery(value)
         presignedUrl = buildPresignedUrl(url).orEmpty()
 
@@ -576,6 +574,11 @@ class MainActivity : AppCompatActivity(), CameraController.Listener {
             rootSegments.joinToString(separator = "/", prefix = "/", postfix = "/")
         }
         return "$scheme://$authority${basePath}get_presigned_url/"
+    }
+
+    private fun buildApiUrl(statusUri: Uri): String? {
+        val host = statusUri.host ?: return null
+        return "http://$host:8000"
     }
 
     private fun setRecordingStateUi(isRecording: Boolean) {
